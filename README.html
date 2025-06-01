@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>缓动光标拖尾效果</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #1a1a1a;
+            cursor: none;
+        }
+        #cursor {
+            width: 20px;
+            height: 20px;
+            background: #fff;
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            mix-blend-mode: difference;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+        }
+        .particle {
+            position: fixed;
+            pointer-events: none;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            animation: fade 1s forwards;
+        }
+        @keyframes fade {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+        }
+    </style>
+</head>
+<body>
+    <div id="cursor"></div>
+    <script>
+        const cursor = document.getElementById('cursor'); 
+        let targetX = 0, targetY = 0;
+        let currentX = 0, currentY = 0;
+        let trailPositions = []; // 存储历史位置用于拖尾 
+        
+        // 粒子系统参数 
+        const TRAIL_LENGTH = 15; // 拖尾长度 
+        const PARTICLE_SPACING = 5; // 粒子间距(像素)
+        const MAX_PARTICLES = 100; // 最大粒子数
+ 
+        document.addEventListener('mousemove',  (e) => {
+            targetX = e.clientX; 
+            targetY = e.clientY; 
+            
+            // 记录光标历史位置
+            trailPositions.unshift({  x: currentX, y: currentY });
+            if (trailPositions.length  > TRAIL_LENGTH) {
+                trailPositions.pop(); 
+            }
+        });
+ 
+        function createTrailParticles() {
+            // 沿历史路径生成粒子 
+            for (let i = 0; i < trailPositions.length;  i++) {
+                if (i % PARTICLE_SPACING === 0) {
+                    const pos = trailPositions[i];
+                    const particle = document.createElement('div'); 
+                    particle.className  = 'particle';
+                    
+                    // 颜色渐变：从光标位置到尾部逐渐变化 
+                    const hue = (i / trailPositions.length  * 120 + 200) % 360;
+                    particle.style.background  = `hsla(${hue}, 100%, 60%, ${1 - i/trailPositions.length})`; 
+                    
+                    // 大小渐变 
+                    const size = 4 + 2 * (1 - i/trailPositions.length); 
+                    particle.style.width  = `${size}px`;
+                    particle.style.height  = `${size}px`;
+                    
+                    particle.style.left  = `${pos.x}px`;
+                    particle.style.top  = `${pos.y}px`;
+                    document.body.appendChild(particle); 
+                    
+                    // 自动清理
+                    setTimeout(() => {
+                        particle.remove(); 
+                    }, 1000);
+                }
+            }
+            
+            // 控制总粒子数 
+            const particles = document.querySelectorAll('.particle'); 
+            if (particles.length  > MAX_PARTICLES) {
+                particles[particles.length - 1].remove();
+            }
+        }
+ 
+        function animate() {
+            const dx = targetX - currentX;
+            const dy = targetY - currentY;
+            
+            // 缓动计算 
+            currentX += dx * 0.04;
+            currentY += dy * 0.04;
+            
+            cursor.style.transform  = `translate(${currentX}px, ${currentY}px)`;
+            
+            // 每帧生成拖尾粒子
+            createTrailParticles();
+            requestAnimationFrame(animate);
+        }
+ 
+        animate();
+    </script>
+</body>
+</html>
