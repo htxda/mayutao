@@ -655,6 +655,36 @@
             padding-left: 1.5rem;
             line-height: 1.8;
         }
+
+         /* 通知样式 */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: white;
+            background-color: var(--success);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateX(150%);
+            transition: transform 0.3s ease;
+        }
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.error {
+            background-color: var(--accent);
+        }
+        
+        .notification.warning {
+            background-color: var(--warning);
+        }
+
         /* 响应式设计 */
         @media (max-width: 992px) {
             .container {
@@ -697,6 +727,34 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* 打印样式 */
+        @media print {
+            .header, .nav, .sidebar, .content-header, .search-bar, .actions {
+                display: none !important;
+            }
+            
+            .container {
+                display: block !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            
+            .main-content {
+                box-shadow: none !important;
+                padding: 0 !important;
+            }
+            
+            table {
+                width: 100% !important;
+                font-size: 12px !important;
+            }
+            
+            th, td {
+                padding: 8px !important;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -754,25 +812,25 @@
                 </div>
             </div>
  
-            <h3><i class="fas fa-bolt"></i> 快捷操作</h3>
+             <h3><i class="fas fa-bolt"></i> 快捷操作</h3>
             <div class="quick-actions">
                 <button class="action-btn" id="addStudentBtn">
                     <i class="fas fa-plus"></i> 添加学生
                 </button>
-                <button class="action-btn">
+                <button class="action-btn" id="exportDataBtn">
                     <i class="fas fa-file-export"></i> 导出数据 
                 </button>
-                <button class="action-btn">
+                <button class="action-btn" id="printReportBtn">
                     <i class="fas fa-print"></i> 打印报表 
                 </button>
-                <button class="action-btn">
+                <button class="action-btn" id="refreshDataBtn">
                     <i class="fas fa-sync-alt"></i> 刷新数据
                 </button>
             </div>
         </div>
  
         <!-- 主要内容区域 -->
-        <div class="main-content">
+        <div class="main-content"> 
             <!-- 首页内容 -->
             <div class="content-section active" id="home-section">
                 <div class="welcome-section">
@@ -805,6 +863,8 @@
                 </div>
             </div>
             
+            
+
             <!-- 学生管理内容 -->
             <div class="content-section" id="students-section">
                 <div class="content-header">
@@ -840,6 +900,12 @@
                 </div>
             </div>
             
+             <!-- 通知区域 -->
+    <div class="notification" id="notification">
+        <i class="fas fa-check-circle"></i>
+        <span id="notificationText">操作成功！</span>
+    </div>
+
             <!-- 课程管理内容 -->
             <div class="content-section" id="courses-section">
                 <div class="content-header">
@@ -1237,6 +1303,24 @@
     </footer>
  
     <!-- JavaScript 部分 -->
+     <script>
+                // 显示通知函数 
+function showNotification(message, type = 'success') {
+    const notification = document.getElementById('notification'); 
+    const notificationText = document.getElementById('notificationText'); 
+    
+    // 设置通知内容和样式 
+    notificationText.textContent  = message;
+    notification.className  = 'notification'; // 重置类名 
+    notification.classList.add(type);  // 添加类型类
+    notification.classList.add('show');  // 显示通知 
+    
+    // 3秒后自动隐藏
+    setTimeout(() => {
+        notification.classList.remove('show'); 
+    }, 3000);
+}
+     </script>
     <script>
         // 导航切换功能 
         document.querySelectorAll('.nav  a').forEach(link => {
@@ -1252,8 +1336,8 @@
                 
                 // 显示对应的内容区域 
                 const sectionId = this.getAttribute('data-section')  + '-section';
-                document.getElementById(sectionId).classList.add('active'); 
-            });
+                    document.getElementById(sectionId).classList.add('active'); 
+                });
         });
  
         // 模态框功能 
@@ -1269,6 +1353,20 @@
             document.getElementById('studentForm').reset(); 
         });
         
+         // 侧边栏添加学生按钮
+        document.getElementById('addStudentBtn').addEventListener('click', () => {
+            // 切换到学生管理页面
+            document.querySelectorAll('.nav a').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+            document.querySelector('[data-section="students"]').classList.add('active');
+            document.getElementById('students-section').classList.add('active');
+            
+            // 打开添加模态框
+            modal.style.display = 'flex';
+            document.getElementById('modalTitle').textContent = '添加学生信息';
+            document.getElementById('studentForm').reset(); 
+        });
+
         // 关闭模态框 
         function closeModal() {
             modal.style.display  = 'none';
@@ -1301,6 +1399,20 @@
                 email: document.getElementById('email').value  
             };
             
+             // 添加新学生或更新现有学生
+            if (studentData.id) {
+                // 更新现有学生
+                const index = students.findIndex(s => s.id === studentData.id);
+                if (index !== -1) {
+                    students[index] = studentData;
+                    showNotification('学生信息更新成功！');
+                }
+            } else {
+                // 添加新学生
+                studentData.id = Date.now().toString();
+                students.push(studentData);
+                showNotification('学生信息添加成功！');
+            }
             // 这里应该添加保存逻辑，比如发送到服务器或更新本地数据 
             console.log(' 保存学生数据:', studentData);
             
@@ -1392,7 +1504,69 @@
                 });
             });
         }
+         // 导出数据功能
+        document.getElementById('exportDataBtn').addEventListener('click', function() {
+            // 切换到学生管理页面
+            document.querySelectorAll('.nav a').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+            document.querySelector('[data-section="students"]').classList.add('active');
+            document.getElementById('students-section').classList.add('active');
+            
+            // 模拟导出操作
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '');
+            const filename = `学生数据_${timestamp}.xlsx`;
+            
+            showNotification(`数据已导出为 ${filename}`, 'success');
+        });
         
+        // 打印报表功能
+        document.getElementById('printReportBtn').addEventListener('click', function() {
+            // 切换到学生管理页面
+            document.querySelectorAll('.nav a').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+            document.querySelector('[data-section="students"]').classList.add('active');
+            document.getElementById('students-section').classList.add('active');
+            
+            // 添加打印标题
+            const printTitle = document.createElement('h2');
+            printTitle.textContent = '学生信息报表';
+            printTitle.style.textAlign = 'center';
+            printTitle.style.marginBottom = '20px';
+            
+            const table = document.getElementById('studentsTable');
+            table.parentNode.insertBefore(printTitle, table);
+            
+            // 打印页面
+            window.print();
+            
+            // 移除打印标题
+            printTitle.remove();
+        });
+        
+        // 刷新数据功能
+        document.getElementById('refreshDataBtn').addEventListener('click', function() {
+            // 切换到学生管理页面
+            document.querySelectorAll('.nav a').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+            document.querySelector('[data-section="students"]').classList.add('active');
+            document.getElementById('students-section').classList.add('active');
+            
+            // 模拟数据刷新
+            showNotification('数据已刷新', 'success');
+            renderStudents();
+        });
+        // 初始化页面 
+        document.addEventListener('DOMContentLoaded', () => {
+            renderStudents();
+                        // 搜索功能 
+            document.querySelector('#students-section .search-bar button').addEventListener('click', searchStudents);
+            document.getElementById('searchInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchStudents();
+                }
+            });
+        });
+
         // 编辑学生 
         function editStudent(id) {
             const student = students.find(s  => s.id  === id);
@@ -1470,6 +1644,7 @@
                 tbody.appendChild(tr); 
             });
         }
+        
     </script>
 <!-- 快速入门指南模态框 -->
     <div class="guide-modal" id="guideModal">
