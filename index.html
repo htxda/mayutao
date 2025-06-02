@@ -729,8 +729,9 @@
         }
 
         /* 打印样式 */
-        @media print {
-            .header, .nav, .sidebar, .content-header, .search-bar, .actions {
+   @media print {
+            .header, .nav, .sidebar, .content-header, .search-bar, .actions, 
+            .no-print, .footer {
                 display: none !important;
             }
             
@@ -745,16 +746,78 @@
                 padding: 0 !important;
             }
             
-            table {
+            .calendar {
                 width: 100% !important;
                 font-size: 12px !important;
             }
             
-            th, td {
+            .calendar th, .calendar td {
                 padding: 8px !important;
+                height: auto !important;
+            }
+            
+            .calendar-event {
+                padding: 4px !important;
+                font-size: 10px !important;
+            }
+            
+            .print-title {
+                display: block !important;
+                text-align: center;
+                font-size: 18px;
+                margin-bottom: 15px;
+                font-weight: bold;
             }
         }
 
+        /* 打印按钮提示 */
+        .print-hint {
+            background-color: #f8f9fa;
+            border-left: 4px solid var(--secondary);
+            padding: 10px 15px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            border-radius: 4px;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 992px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                order: 2;
+            }
+        }
+ 
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+            
+            .nav {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .content-header {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: flex-start;
+            }
+            
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -910,7 +973,7 @@
             <div class="content-section" id="courses-section">
                 <div class="content-header">
                     <h2><i class="fas fa-book"></i> 课程管理</h2>
-                    <button class="btn btn-primary">
+                    <button class="btn btn-primary" id="openCourseModalBtn2">
                         <i class="fas fa-plus"></i> 添加课程
                     </button>
                 </div>
@@ -1065,10 +1128,10 @@
                 <div class="content-header">
                     <h2><i class="fas fa-calendar-alt"></i> 课程安排</h2>
                     <div>
-                        <button class="btn btn-primary">
+                        <button class="btn btn-primary" id="openCourseModalBtn">
                             <i class="fas fa-plus"></i> 添加课程 
                         </button>
-                        <button class="btn btn-success">
+                        <button class="btn btn-success" id="printScheduleBtn">
                             <i class="fas fa-print"></i> 打印课表 
                         </button>
                     </div>
@@ -1162,6 +1225,12 @@
                             </tr>
                         </tbody>
                     </table>
+                    </div>
+                
+                <div class="print-hint">
+                    <i class="fas fa-info-circle"></i> 提示：点击"打印课表"按钮可将课程表导出为PDF或直接打印。打印前请确认学期和班级选择正确。
+                </div>
+            </div>
                 </div>
             </div>
             
@@ -1240,6 +1309,57 @@
     </div>
  
     <!-- 添加/编辑学生模态框 -->
+     <!-- 在HTML部分添加课程模态框（放在学生模态框后面） -->
+<div class="modal" id="courseModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="courseModalTitle">添加课程</h3>
+            <button class="close-modal">&times;</button>
+        </div>
+        <form id="courseForm">
+            <input type="hidden" id="courseId">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="courseCode">课程代码 *</label>
+                    <input type="text" id="courseCode" required>
+                </div>
+                <div class="form-group">
+                    <label for="courseName">课程名称 *</label>
+                    <input type="text" id="courseName" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="teacher">授课教师 *</label>
+                    <input type="text" id="teacher" required>
+                </div>
+                <div class="form-group">
+                    <label for="credit">学分 *</label>
+                    <input type="number" id="credit" min="1" max="10" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="hours">学时 *</label>
+                    <input type="number" id="hours" min="1" max="100" required>
+                </div>
+                <div class="form-group">
+                    <label for="status">状态</label>
+                    <select id="status">
+                        <option value="进行中">进行中</option>
+                        <option value="未开始">未开始</option>
+                        <option value="已结束">已结束</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-footer">
+                <button type="button" class="btn btn-danger" id="cancelCourseBtn">取消</button>
+                <button type="submit" class="btn btn-primary">保存</button>
+            </div>
+        </form>
+    </div>
+</div>
+
     <div class="modal" id="studentModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1303,6 +1423,233 @@
     </footer>
  
     <!-- JavaScript 部分 -->
+     
+     <script>
+    // 课程数据 
+    let courses = [
+        {
+            id: '1',
+            code: 'CS101',
+            name: '计算机科学导论',
+            teacher: '张教授',
+            credit: '3',
+            hours: '48',
+            status: '进行中'
+        },
+        {
+            id: '2',
+            code: 'MA202',
+            name: '高等数学',
+            teacher: '李教授',
+            credit: '4',
+            hours: '64',
+            status: '进行中'
+        },
+        {
+            id: '3',
+            code: 'EN301',
+            name: '专业英语',
+            teacher: '王老师',
+            credit: '2',
+            hours: '32',
+            status: '未开始'
+        }
+    ];
+ 
+    // 渲染课程表格 
+    function renderCourses() {
+        const tbody = document.querySelector('.courses-table  tbody');
+        tbody.innerHTML  = '';
+        
+        courses.forEach(course  => {
+            const tr = document.createElement('tr'); 
+            tr.innerHTML  = `
+                <td>${course.code}</td> 
+                <td>${course.name}</td> 
+                <td>${course.teacher}</td> 
+                <td>${course.credit}</td> 
+                <td>${course.hours}</td> 
+                <td>
+                    <span class="badge" style="background-color: ${
+                        course.status  === '进行中' ? '#2ecc71' : 
+                        course.status  === '未开始' ? '#f39c12' : '#e74c3c'
+                    }; color: white; padding: 0.3rem 0.6rem; border-radius: 20px;">
+                        ${course.status} 
+                    </span>
+                </td>
+                <td class="actions">
+                    <div class="action-icon edit" data-id="${course.id}"> 
+                        <i class="fas fa-edit"></i>
+                    </div>
+                    <div class="action-icon delete" data-id="${course.id}"> 
+                        <i class="fas fa-trash"></i>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr); 
+        });
+        
+        // 添加编辑和删除事件 
+        document.querySelectorAll('.courses-table  .action-icon.edit').forEach(icon  => {
+            icon.addEventListener('click',  function() {
+                const courseId = this.getAttribute('data-id'); 
+                editCourse(courseId);
+            });
+        });
+        
+        document.querySelectorAll('.courses-table  .action-icon.delete').forEach(icon  => {
+            icon.addEventListener('click',  function() {
+                const courseId = this.getAttribute('data-id'); 
+                if (confirm('确定要删除这个课程吗？')) {
+                    deleteCourse(courseId);
+                }
+            });
+        });
+    }
+ 
+    // 编辑课程 
+    function editCourse(id) {
+        const course = courses.find(c  => c.id  === id);
+        if (course) {
+            document.getElementById('courseModalTitle').textContent  = '编辑课程';
+            document.getElementById('courseId').value  = course.id; 
+            document.getElementById('courseCode').value  = course.code; 
+            document.getElementById('courseName').value  = course.name; 
+            document.getElementById('teacher').value  = course.teacher; 
+            document.getElementById('credit').value  = course.credit; 
+            document.getElementById('hours').value  = course.hours; 
+            document.getElementById('status').value  = course.status; 
+            
+            document.getElementById('courseModal').style.display  = 'flex';
+        }
+    }
+ 
+    // 删除课程 
+    function deleteCourse(id) {
+        courses = courses.filter(c  => c.id  !== id);
+        renderCourses();
+        showNotification('课程删除成功！');
+    }
+ 
+    // 课程模态框功能 
+    const courseModal = document.getElementById('courseModal'); 
+    const openCourseModalBtn = document.getElementById('openCourseModalBtn');
+     const openCourseModalBtn2 = document.getElementById('openCourseModalBtn2');
+    const closeCourseModalBtn = courseModal.querySelector('.close-modal'); 
+    const cancelCourseBtn = document.getElementById('cancelCourseBtn'); 
+    
+    // 打开课程模态框 
+    openCourseModalBtn.addEventListener('click',  () => {
+        courseModal.style.display  = 'flex';
+        document.getElementById('courseModalTitle').textContent  = '添加课程';
+        document.getElementById('courseForm').reset(); 
+        document.getElementById('courseId').value  = '';
+    });
+    // 为课程管理页面的添加课程按钮添加事件监听 
+openCourseModalBtn2.addEventListener('click',  () => {
+    courseModal.style.display  = 'flex';
+    document.getElementById('courseModalTitle').textContent  = '添加课程';
+    document.getElementById('courseForm').reset(); 
+    document.getElementById('courseId').value  = '';
+});
+    // 关闭课程模态框 
+    function closeCourseModal() {
+        courseModal.style.display  = 'none';
+    }
+    
+    closeCourseModalBtn.addEventListener('click',  closeCourseModal);
+    cancelCourseBtn.addEventListener('click',  closeCourseModal);
+    
+    // 点击模态框外部关闭 
+    window.addEventListener('click',  (e) => {
+        if (e.target  === courseModal) {
+            closeCourseModal();
+        }
+    });
+    
+    // 课程表单提交处理 
+    document.getElementById('courseForm').addEventListener('submit',  function(e) {
+        e.preventDefault(); 
+        
+        // 获取表单数据 
+        const courseData = {
+            id: document.getElementById('courseId').value, 
+            code: document.getElementById('courseCode').value, 
+            name: document.getElementById('courseName').value, 
+            teacher: document.getElementById('teacher').value, 
+            credit: document.getElementById('credit').value, 
+            hours: document.getElementById('hours').value, 
+            status: document.getElementById('status').value  
+        };
+        
+        // 添加新课程或更新现有课程 
+        if (courseData.id)  {
+            // 更新现有课程 
+            const index = courses.findIndex(c  => c.id  === courseData.id); 
+            if (index !== -1) {
+                courses[index] = courseData;
+                showNotification('课程信息更新成功！');
+            }
+        } else {
+            // 添加新课程 
+            courseData.id  = Date.now().toString(); 
+            courses.push(courseData); 
+            showNotification('课程添加成功！');
+        }
+        
+        // 关闭模态框 
+        closeCourseModal();
+        
+        // 刷新课程列表 
+        renderCourses();
+    });
+ 
+    // 初始化页面时渲染课程 
+    document.addEventListener('DOMContentLoaded',  () => {
+        renderCourses();
+    });
+</script>
+     <script>
+        // 确保在DOM完全加载后执行 
+document.addEventListener('DOMContentLoaded',  function() {
+    // 打印课表功能 
+    const printBtn = document.getElementById('printScheduleBtn'); 
+    if (printBtn) {
+        printBtn.addEventListener('click',  function() {
+            // 获取当前选择的学期和班级 
+            const semesterSelect = document.querySelector('#schedule-section  select:first-child');
+            const classSelect = document.querySelector('#schedule-section  select:last-child');
+            
+            if (semesterSelect && classSelect) {
+                const semester = semesterSelect.value; 
+                const className = classSelect.value; 
+                
+                // 创建打印标题 
+                const printTitle = document.createElement('div'); 
+                printTitle.className  = 'print-title';
+                printTitle.textContent  = `${semester} - ${className} 课程表`;
+                
+                // 插入打印标题 
+                const scheduleSection = document.getElementById('schedule-section'); 
+                if (scheduleSection) {
+                    scheduleSection.insertBefore(printTitle,  scheduleSection.firstChild); 
+                    
+                    // 打印 
+                    window.print(); 
+                    
+                    // 移除打印标题 
+                    printTitle.remove(); 
+                    
+                    // 显示提示 
+                    showNotification('正在准备打印，请稍候...', 'info');
+                }
+            }
+        });
+    } else {
+        console.error(' 打印按钮未找到');
+    }
+});
+     </script>
      <script>
                 // 显示通知函数 
 function showNotification(message, type = 'success') {
@@ -1586,6 +1933,7 @@ function showNotification(message, type = 'success') {
             }
         }
         
+        
         // 删除学生 
         function deleteStudent(id) {
             students = students.filter(s  => s.id  !== id);
@@ -1683,6 +2031,8 @@ function showNotification(message, type = 'success') {
                 e.currentTarget.style.display = 'none';
             }
         });
+        
+      
         // 实时时钟功能
 function updateClock() {
     const now = new Date();
